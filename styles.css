@@ -1,0 +1,171 @@
+* {
+    font-family: monospace;
+}
+
+body {
+    background-color: rgb(225, 225, 225);
+}
+
+
+/* ========== PANNEAUX PRINCIPAUX ========== */
+.panel {
+    position: fixed;
+    padding: 1.25em;
+    z-index: 10000;
+    width: 28em;
+    cursor: move;
+}
+
+.panel-main-controls {
+    bottom: 422px;
+    right: 20px;
+    background-color: yellow;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-export {
+    bottom: 432px;
+    right: 430px;
+    background-color: pink;
+    display: grid;
+}
+
+.panel-noise {
+    bottom: 20px;
+    right: 430px;
+    background-color: #2aff66;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-mouse {
+    bottom: 630px;
+    right: 430px;
+    border: 3px dotted rgb(0, 0, 0);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.panel-knobs {
+    right: 20px;
+    bottom: 20px;
+    background: #3780ffff;
+    color: #000000ff;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* ========== KNOBS ========== */
+.knob-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.knob-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.knob-canvas {
+    cursor: grab;
+    background: transparent;
+    box-sizing: border-box;
+    margin-bottom: 6px;
+}
+
+.knob-label {
+    font-size: 12px;
+}
+
+.knob-value {
+    font-size: 11px;
+    color: #ddd;
+}
+
+/* ========== SLIDERS ========== */
+.slider-label {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.section-title {
+    margin-top: 20px;
+    font-weight: bold;
+}
+
+/* ========== BOUTONS ========== */
+.export-buttons {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+    grid-template-columns: 1fr 1fr;
+}
+
+.btn-export {
+    padding: 10px;
+    width: 100%;
+    background-color: #333;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-export:hover {
+    background-color: #444;
+}
+
+
+.btn-toggle-noise {
+    padding: 10px;
+    width: 100%;
+    background-color: #333;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.btn-toggle-noise:hover {
+    background-color: #444;
+}
+
+/* ========== SCREEN SELECTOR ========== */
+.screen-selector {
+    margin-top: 8px;
+}
+
+.screen-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.screen-label {
+    cursor: pointer;
+}
+
+/* ========== FILE INPUT ========== */
+
+#file-input-container {
+    margin-top: 1.25em;
+    padding: 1em;
+    width: 21.5em ;
+    background-color: #333;
+    color: white;
+    cursor: pointer;
+}
+
+#file-input-container:hover {
+    background-color: #444;
+}
