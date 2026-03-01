@@ -2,6 +2,7 @@
 let knobSize = 150;
 let knobMargin = 20;
 let knobsPanel;
+let mousePanel;
 let knobTL, knobTR, knobBL, knobBR;
 
 // ========== CLASSE DRAGGABLE PANEL ==========
@@ -198,7 +199,7 @@ function createUI() {
     // Créer le panneau de knobs
     createKnobsPanel();
 
-        // Créer le panneau de knobs
+    // Créer le panneau de mouse
     createMousePanel();
 
     // Rendre tous les panneaux draggables
@@ -252,7 +253,7 @@ function createMainSliders(parent) {
 }
 
 function createMousePanel() {
-    let mousePanel = createDiv();
+    mousePanel = createDiv();
     mousePanel.addClass('panel panel-mouse');
     // Slider pour le rayon d'influence de la souris
     let mouseRadiusSlider = createSlider(50, 1500, mouse_influence_radius, 10).parent(mousePanel);
@@ -289,7 +290,7 @@ function createNoisePanel() {
             noise_speed=0
             noise_intensity=0
             noisePanel.style('background-color', '#bbbbbbff');
-            mousePanel.style('background-color', '#ff0000ff');
+            mousePanel.style('background-color', '#d593ff');
             
         } else {
             toggleBtn.html("Stop");
@@ -359,19 +360,19 @@ function createExportButtons(parent) {
         console.log("Export PNG demandé");
     });
 
-    // Bouton enregistrement vidéo WebM
+    // Bouton enregistrement séquence PNG
     let videoBtn = createButton("● REC").parent(btns);
     videoBtn.addClass('btn-export btn-video');
     videoBtn.mousePressed(() => {
         console.log("Bouton REC cliqué, isRecording:", isRecording, "isRecordingSVG:", isRecordingSVG);
         
         if (!isRecording && !isRecordingSVG) {
-            console.log("Démarrage enregistrement vidéo");
+            console.log("Démarrage enregistrement séquence PNG");
             startRecording();
             videoBtn.html("■ STOP");
             videoBtn.style('background-color', '#ff0000');
         } else if (isRecording) {
-            console.log("Arrêt enregistrement vidéo");
+            console.log("Arrêt enregistrement séquence PNG");
             stopRecording();
             videoBtn.html("● REC");
             videoBtn.style('background-color', '#333');
@@ -394,6 +395,54 @@ function createExportButtons(parent) {
             stopSVGRecording();
             svgAnimBtn.html("● SVG");
             svgAnimBtn.style('background-color', '#333');
+        }
+    });
+
+    // Gestionnaires clavier pour les exports
+    document.addEventListener('keydown', (e) => {
+        // Ignorer si on tape dans un input
+        if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+        
+        // I : export SVG statique
+        if (e.key === 'i' || e.key === 'I') {
+            export_mode_SVG = true;
+            console.log("Export SVG statique demandé (touche I)");
+        }
+        
+        // O : export PNG
+        if (e.key === 'o' || e.key === 'O') {
+            export_mode_PNG = true;
+            console.log("Export PNG demandé (touche O)");
+        }
+        
+        // K : toggle enregistrement SVG animé
+        if (e.key === 'k' || e.key === 'K') {
+            if (!isRecordingSVG && !isRecording) {
+                console.log("Démarrage enregistrement SVG (touche K)");
+                startSVGRecording();
+                svgAnimBtn.html("■ STOP");
+                svgAnimBtn.style('background-color', '#ff0000');
+            } else if (isRecordingSVG) {
+                console.log("Arrêt enregistrement SVG (touche K)");
+stopSVGRecording();
+                svgAnimBtn.html("● SVG");
+                svgAnimBtn.style('background-color', '#333');
+            }
+        }
+        
+        // L : toggle enregistrement séquence PNG
+        if (e.key === 'l' || e.key === 'L') {
+            if (!isRecording && !isRecordingSVG) {
+                console.log("Démarrage enregistrement séquence PNG (touche L)");
+                startRecording();
+                videoBtn.html("■ STOP");
+                videoBtn.style('background-color', '#ff0000');
+            } else if (isRecording) {
+                console.log("Arrêt enregistrement séquence PNG (touche L)");
+                stopRecording();
+                videoBtn.html("● REC");
+                videoBtn.style('background-color', '#333');
+            }
         }
     });
 }

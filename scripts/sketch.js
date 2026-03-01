@@ -31,10 +31,12 @@ let strokeWDefault = 1;
 let export_mode_SVG = false;
 let export_mode_PNG = false;
 
-// ========== ENREGISTREMENT VIDÉO ==========
+// ========== ENREGISTREMENT SÉQUENCE PNG ==========
 let isRecording = false;
-let videoRecorder;
-let recordedChunks = [];
+let recordedFrames = [];
+let recordingStartFrame = 0;
+let targetFPS = 30; // FPS pour l'export
+let exportWidth = 1920; // Largeur Full HD pour l'export
 
 // ========== ENREGISTREMENT SVG ANIMÉ ==========
 let isRecordingSVG = false;
@@ -216,28 +218,14 @@ function draw() {
                         let transitionDistance = distance - coreRadius;
                         let transitionZone = mouse_influence_radius - coreRadius;
                         let influence = 1 - (transitionDistance / transitionZone);
-                        influence = pow(influence, 1.5); // Courbe plus douce
                         
-                        // Mélanger l'angle original et l'angle vers la souris
+                        // Interpolation linéaire entre l'angle de base et l'angle vers la souris
                         finalAngle = lerp(angle + variation, angleToMouse, influence);
                     }
                 }
             }
 
-            // Capturer les données pour l'export SVG
-            if (isRecordingSVG) {
-                recordArrowData({
-                    gridX: floor(x / cellSize),
-                    gridY: floor(y / cellSize),
-                    x: x + cellSize * 0.5,
-                    y: y + cellSize * 0.5,
-                    angle: finalAngle,
-                    size: size,
-                    strokeWidth: strokeW
-                });
-            }
-
-            // Dessiner la flèche
+            // Rendu de la flèche
             push();
             translate(x + cellSize * 0.5 + padding, y + cellSize * 0.5 + padding);
             rotate(radians(finalAngle));
@@ -246,7 +234,19 @@ function draw() {
             line(size / 2, 0, size / 4, size / 4);
             pop();
 
-            // Export SVG
+            // Enregistrer les données de la flèche pour le SVG animé
+            if (isRecordingSVG) {
+                recordArrowData({
+                    x: x + cellSize * 0.5,
+                    y: y + cellSize * 0.5,
+                    angle: finalAngle,
+                    size: size,
+                    strokeWidth: strokeW,
+                    gridX: x,
+                    gridY: y
+                });
+            }
+
             if (export_mode_SVG) {
                 svg += `<g transform="translate(${x + cellSize*0.5},${y + cellSize*0.5}) rotate(${finalAngle})">\n`;
                 svg += `<line x1="${-size/2}" y1="0" x2="${size/2}" y2="0"/>\n`;
@@ -275,67 +275,162 @@ function draw() {
         save(inputFileName + ".png");
         export_mode_PNG = false;
     }
+
+    // Capturer les frames pour l'enregistrement MP4
+    if (isRecording) {
+        captureFrameForMP4();
+    }
 }
 
-// ========== FONCTIONS D'ENREGISTREMENT VIDÉO ==========
+// ========== FONCTIONS D'ENREGISTREMENT SÉQUENCE PNG ==========
 function startRecording() {
-    recordedChunks = [];
-    
-    // Capturer le canvas
-    let canvas = document.querySelector('canvas');
-    let stream = canvas.captureStream(60); // 60 FPS pour plus de fluidité
-    
-    // Options pour une meilleure qualité
-    let options = {
-        mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 8000000 // 8 Mbps pour meilleure qualité
-    };
-    
-    // Fallback si vp9 n'est pas supporté
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = {
-            mimeType: 'video/webm;codecs=h264',
-            videoBitsPerSecond: 8000000
-        };
-    }
-    
-    // Second fallback
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = {
-            mimeType: 'video/webm',
-            videoBitsPerSecond: 8000000
-        };
-    }
-    
-    videoRecorder = new MediaRecorder(stream, options);
-    
-    videoRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-            recordedChunks.push(e.data);
-        }
-    };
-    
-    videoRecorder.onstop = () => {
-        let blob = new Blob(recordedChunks, { type: 'video/webm' });
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement('a');
-        a.href = url;
-        a.download = inputFileName + '_recording.webm';
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-    
-    videoRecorder.start(100); // Enregistrer par chunks de 100ms
+    recordedFrames = [];
+    recordingStartFrame = frameCount;
     isRecording = true;
-    console.log('enregistrement .svg démarré');
+    frameRate(targetFPS); // Fixer le framerate à 30 FPS
+    console.log('Enregistrement de séquence PNG démarré à 30 FPS');
+}
+
+function captureFrameForMP4() {
+    // Capturer chaque frame (on est déjà à 30 FPS)
+    let mainCanvas = document.querySelector('canvas');
+    
+    // Calculer les dimensions d'export avec ratio préservé
+    const canvasWidth = img.width + padding * 2;
+    const canvasHeight = img.height + padding * 2;
+    const aspectRatio = canvasHeight / canvasWidth;
+    const exportHeight = Math.round(exportWidth * aspectRatio);
+    
+    // Créer un canvas temporaire aux bonnes dimensions
+    let tempCanvas = document.createElement('canvas');
+    tempCanvas.width = exportWidth;
+    tempCanvas.height = exportHeight;
+    let tempCtx = tempCanvas.getContext('2d');
+    
+    // ACTIVER L'INTERPOLATION DE HAUTE QUALITÉ
+    tempCtx.imageSmoothingEnabled = true;
+    tempCtx.imageSmoothingQuality = 'high'; // 'low', 'medium', ou 'high'
+    
+    // Dessiner le canvas principal redimensionné avec haute qualité
+    tempCtx.drawImage(mainCanvas, 0, 0, exportWidth, exportHeight);
+    
+    // Stocker l'image PNG avec qualité maximale
+    recordedFrames.push(tempCanvas.toDataURL('image/png'));
+    
+    // Afficher la progression dans la console
+    const frameNumber = recordedFrames.length;
+    if (frameNumber % 30 === 0) {
+        console.log(`Frame ${frameNumber} capturée (${(frameNumber / 30).toFixed(1)}s)`);
+    }
 }
 
 function stopRecording() {
-    if (videoRecorder && isRecording) {
-        videoRecorder.stop();
-        isRecording = false;
-        console.log('enregistrement .svg réussi');
+    if (!isRecording) return;
+    
+    isRecording = false;
+    frameRate(60); // Restaurer le framerate normal
+    console.log(`Enregistrement terminé : ${recordedFrames.length} frames capturées`);
+    
+    // Créer et télécharger le ZIP
+    createZipAndDownload();
+}
+
+async function createZipAndDownload() {
+    if (recordedFrames.length === 0) {
+        console.error("Aucune frame à exporter");
+        return;
     }
+    
+    // Calculer les dimensions pour l'affichage
+    const canvasWidth = img.width + padding * 2;
+    const canvasHeight = img.height + padding * 2;
+    const aspectRatio = canvasHeight / canvasWidth;
+    const exportHeight = Math.round(exportWidth * aspectRatio);
+    
+    console.log(`🎬 Création du ZIP : ${recordedFrames.length} images ${exportWidth}x${exportHeight}px à 30 FPS`);
+    console.log(`⏱️  Durée de la vidéo : ${(recordedFrames.length / 30).toFixed(2)} secondes`);
+    
+    // Créer un nouveau ZIP
+    const zip = new JSZip();
+    const folderName = `${inputFileName}_sequence`;
+    
+    console.log('📦 Ajout des frames au ZIP...');
+    
+    // Ajouter toutes les frames au ZIP
+    for (let i = 0; i < recordedFrames.length; i++) {
+        const frameNumber = String(i + 1).padStart(5, '0');
+        const filename = `${inputFileName}_frame_${frameNumber}.png`;
+        
+        // Convertir le data URL en blob
+        const base64Data = recordedFrames[i].split(',')[1];
+        
+        // Ajouter l'image au ZIP
+        zip.file(filename, base64Data, {base64: true});
+        
+        // Afficher la progression tous les 10%
+        const progress = ((i + 1) / recordedFrames.length * 100);
+        if (progress % 10 < (100 / recordedFrames.length) || i === recordedFrames.length - 1) {
+            console.log(`  📥 ${progress.toFixed(0)}% - ${i + 1}/${recordedFrames.length} frames ajoutées`);
+        }
+    }
+    
+    // Créer un fichier texte avec les informations
+    const infoText = `Séquence PNG - ${inputFileName}
+———
+Nombre de frames : ${recordedFrames.length}
+Framerate : 30 FPS
+Dimensions : ${exportWidth}x${exportHeight}px
+Durée : ${(recordedFrames.length / 30).toFixed(2)} sec
+
+Prérequis : FFmpeg
+———
+Ouvrir un onglet terminal et taper :
+brew install ffmpeg
+
+Conversion vidéo MP4 (FFmpeg) :
+———
+Ouvrir un terminal dans le dossier téléchargé puis taper : 
+ffmpeg -framerate 30 -i ${inputFileName}_frame_%05d.png -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p output.mp4
+La vidéo se trouvera dans le dossier téléchargé
+
+Importer dans After Effects :
+———
+1. Fichier > Importer > Fichier
+2. Sélectionner ${inputFileName}_frame_00001.png
+3. Cocher "Sequence PNG"
+4. Cliquer sur Import
+`;
+    
+    zip.file('_README.txt', infoText);
+    
+    console.log('📦 Création du fichier ZIP...');
+    
+    // Générer le ZIP SANS compression (STORE = juste empaqueter, très rapide)
+    const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'STORE'  // Pas de compression, juste empaquetage = ultra rapide
+    }, function updateCallback(metadata) {
+        // Afficher la progression
+        const percent = metadata.percent.toFixed(0);
+        if (percent % 5 === 0 || percent === '100') {
+            console.log(`  📦 ${percent}%`);
+        }
+    });
+    
+    // Télécharger le ZIP
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${folderName}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    const sizeMB = (zipBlob.size / 1024 / 1024).toFixed(2);
+    console.log(`✅ ZIP téléchargé : ${folderName}.zip (${sizeMB} MB)`);
+    console.log(`✅ ${recordedFrames.length} frames exportées avec succès !`);
+    
+    // Nettoyer
+    recordedFrames = [];
 }
 
 // ========== FONCTIONS D'ENREGISTREMENT SVG ANIMÉ ==========

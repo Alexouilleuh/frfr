@@ -6,11 +6,18 @@ body {
     background-color: rgb(225, 225, 225);
 }
 
+.p {
+    padding-bottom: 0.5em;
+}
+
+.tabulé {
+    margin-left: 2.5em; 
+}
 
 /* ========== PANNEAUX PRINCIPAUX ========== */
 .panel {
     position: fixed;
-    padding: 1.25em;
+    padding: 0.75em;
     z-index: 10000;
     width: 28em;
     cursor: move;
@@ -44,9 +51,9 @@ body {
 .panel-mouse {
     bottom: 630px;
     right: 430px;
-    border: 3px dotted rgb(0, 0, 0);
     display: flex;
     flex-direction: column;
+    background-color: #d593ff;
     gap: 12px;
 }
 
@@ -94,13 +101,7 @@ body {
 
 /* ========== SLIDERS ========== */
 .slider-label {
-    font-size: 18px;
-    margin-bottom: 12px;
-}
-
-.section-title {
-    margin-top: 20px;
-    font-weight: bold;
+    font-size: 1em;
 }
 
 /* ========== BOUTONS ========== */
@@ -134,26 +135,14 @@ body {
     cursor: pointer;
     margin-bottom: 16px;
     width: 100%;
+
 }
 
 .btn-toggle-noise:hover {
     background-color: #444;
 }
 
-/* ========== SCREEN SELECTOR ========== */
-.screen-selector {
-    margin-top: 8px;
-}
 
-.screen-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.screen-label {
-    cursor: pointer;
-}
 
 /* ========== FILE INPUT ========== */
 
