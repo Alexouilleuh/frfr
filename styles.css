@@ -4,10 +4,35 @@
 
 body {
     background-color: rgb(225, 225, 225);
+    margin: 20px; /* Espacement uniforme de 20px pour canvas, texte, etc. */
+    overflow: hidden; /* Empêcher le scroll global */
+}
+
+/* ========== CONTENEUR CANVAS ZOOMABLE ========== */
+#canvas-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 0;
+    bottom: 0;
+    overflow: auto; /* Permettre le scroll si le canvas dépasse */
+    transform-origin: top left;
+    /* Le zoom sera appliqué via JavaScript */
+}
+
+#canvas-container canvas {
+    display: block;
 }
 
 .p {
     padding-bottom: 0.5em;
+    position: fixed;
+    top: 0;
+    left: 20px;
+    background-color: rgba(225, 225, 225, 0.95);
+    padding: 10px;
+    z-index: 9999;
+    margin: 0;
 }
 
 .tabulé {
@@ -24,7 +49,7 @@ body {
 }
 
 .panel-main-controls {
-    bottom: 422px;
+    bottom: 447px;
     right: 20px;
     background-color: yellow;
     display: flex;
@@ -33,15 +58,15 @@ body {
 }
 
 .panel-export {
-    bottom: 432px;
-    right: 430px;
+    bottom: 573px;
+    right: 423px;
     background-color: pink;
     display: grid;
 }
 
 .panel-noise {
     bottom: 20px;
-    right: 430px;
+    right: 423px;
     background-color: #2aff66;
     display: flex;
     flex-direction: column;
@@ -49,8 +74,8 @@ body {
 }
 
 .panel-mouse {
-    bottom: 630px;
-    right: 430px;
+    bottom: 372px;
+    right: 423px;
     display: flex;
     flex-direction: column;
     background-color: #d593ff;
@@ -91,12 +116,12 @@ body {
 }
 
 .knob-label {
-    font-size: 12px;
+    font-size: 1em;
 }
 
 .knob-value {
-    font-size: 11px;
-    color: #ddd;
+    font-size: 1em;
+    color: #ffffff;
 }
 
 /* ========== SLIDERS ========== */
@@ -108,8 +133,8 @@ body {
 .export-buttons {
     display: grid;
     gap: 10px;
-    margin-top: 8px;
     grid-template-columns: 1fr 1fr;
+    /* margin-top supprimé pour égaliser les marges internes du panneau */
 }
 
 .btn-export {
@@ -147,12 +172,15 @@ body {
 /* ========== FILE INPUT ========== */
 
 #file-input-container {
-    margin-top: 1.25em;
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
     padding: 1em;
-    width: 21.5em ;
+    width: 21.5em;
     background-color: #333;
     color: white;
     cursor: pointer;
+    z-index: 10000;
 }
 
 #file-input-container:hover {

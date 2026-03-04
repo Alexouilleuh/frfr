@@ -1,11 +1,8 @@
-// ========== CONFIGURATION INTERFACE ==========
 let knobSize = 150;
 let knobMargin = 20;
 let knobsPanel;
 let mousePanel;
 let knobTL, knobTR, knobBL, knobBR;
-
-// ========== CLASSE DRAGGABLE PANEL ==========
 class DraggablePanel {
     constructor(element, hasGridLayout = false) {
         this.panel = element.elt;
@@ -13,12 +10,10 @@ class DraggablePanel {
         this.isDragging = false;
         this.offsetX = 0;
         this.offsetY = 0;
-        // Rendre tout le panel draggable
         this.panel.addEventListener('mousedown', this.onMouseDown.bind(this));
     }
 
     onMouseDown(e) {
-        // Ne pas drag si on interagit avec un slider, bouton, checkbox ou knob canvas
         if (e.target.tagName === 'INPUT' || 
             e.target.tagName === 'BUTTON' || 
             e.target.tagName === 'CANVAS' ||
@@ -60,7 +55,6 @@ class DraggablePanel {
     }
 }
 
-// ========== CLASSE KNOB ==========
 class SimpleKnob {
     constructor(parent, label, initialAngleDeg, onChange) {
         this.label = label;
@@ -71,7 +65,8 @@ class SimpleKnob {
         this.wrapper.parent(parent);
         this.wrapper.addClass('knob-wrapper');
         this.wrapper.style('width', knobSize + 'px');
-        this.wrapper.style('height', knobSize + 24 + 'px');
+        this.wrapper.style('height', knobSize + 30 + 'px');
+        this.wrapper.style('margin-bottom',  10 + 'px');
 
         this.canvas = document.createElement('canvas');
         this.canvas.width = knobSize;
@@ -128,7 +123,6 @@ class SimpleKnob {
         if (this.onChange) this.onChange(this.angle);
         this.valueEl.html(Math.round(this.angle) + '°');
         this.draw();
-        // Enregistrer ce knob comme dernier utilisé
         lastFocusedKnob = this;
         lastFocusedSlider = null;
     }
@@ -171,48 +165,33 @@ class SimpleKnob {
     }
 }
 
-// ========== FONCTION PRINCIPALE DE CRÉATION UI ==========
 function createUI() {
-    // File input
     fileInput = createFileInput(handleFile);
     let fileContainer = createDiv("");
     fileContainer.id('file-input-container');
     fileInput.parent(fileContainer);
 
-    // Colonne gauche : sliders principaux
     let leftCol = createDiv();
     leftCol.addClass('panel panel-main-controls');
 
-    // Colonne droite : sélecteur d'écran + exports
     let rightCol = createDiv();
     rightCol.addClass('panel panel-export');
 
-    // Créer les sliders principaux
     createMainSliders(leftCol);
-
-    // Créer le sélecteur d'écran et les boutons export
     createExportButtons(rightCol);
-
-    // Créer le panneau de noise séparé
     createNoisePanel();
-
-    // Créer le panneau de knobs
     createKnobsPanel();
-
-    // Créer le panneau de mouse
     createMousePanel();
 
-    // Rendre tous les panneaux draggables
     new DraggablePanel(leftCol);
     new DraggablePanel(rightCol);
 }
 
-// ========== SLIDERS PRINCIPAUX ==========
 function createMainSliders(parent) {
     let cellSizeLabel, sizeFactorLabel, contrastLabel, strokeLabel;
 
     cellSizeSlider = createSlider(5, 60, 15, 1).parent(parent);
-    createDiv("grid-size").parent(parent);
+    createDiv("taille de la grille").parent(parent);
     cellSizeLabel = createSpan(" 15").parent(parent);
     cellSizeLabel.addClass('slider-label');
     cellSizeSlider.input(() => { 
@@ -222,7 +201,7 @@ function createMainSliders(parent) {
     });
 
     sizeFactorSlider = createSlider(0.2, 10, 1.8, 0.1).parent(parent);
-    createDiv("arrow-size (x)").parent(parent);
+    createDiv("taille des flèches").parent(parent);
     sizeFactorLabel = createSpan(" 1.8").parent(parent);
     sizeFactorLabel.addClass('slider-label');
     sizeFactorSlider.input(() => { 
@@ -232,7 +211,7 @@ function createMainSliders(parent) {
     });
 
     contrastSlider = createSlider(0.1, 4, 1.8, 0.1).parent(parent);
-    createDiv("contrast").parent(parent);
+    createDiv("contraste").parent(parent);
     contrastLabel = createSpan(" 1.8").parent(parent);
     contrastLabel.addClass('slider-label');
     contrastSlider.input(() => { 
@@ -255,9 +234,9 @@ function createMainSliders(parent) {
 function createMousePanel() {
     mousePanel = createDiv();
     mousePanel.addClass('panel panel-mouse');
-    // Slider pour le rayon d'influence de la souris
+    
     let mouseRadiusSlider = createSlider(50, 1500, mouse_influence_radius, 10).parent(mousePanel);
-    createDiv("mouse influence radius").parent(mousePanel);
+    createDiv("attirance vers le curseur").parent(mousePanel);
     radiusLabel = createSpan(" " + mouse_influence_radius).parent(mousePanel);
     radiusLabel.addClass('slider-label');
     mouseRadiusSlider.input(() => {
@@ -267,25 +246,31 @@ function createMousePanel() {
         lastFocusedKnob = null;
     });
 
-    // Rendre le panneau draggable
+    let mouseDeadzoneSlider = createSlider(0, 20, mouse_deadzone, 1).parent(mousePanel);
+    createDiv("zone morte").parent(mousePanel);
+    deadzoneLabel = createSpan(" " + mouse_deadzone).parent(mousePanel);
+    deadzoneLabel.addClass('slider-label');
+    mouseDeadzoneSlider.input(() => {
+        mouse_deadzone = mouseDeadzoneSlider.value();
+        deadzoneLabel.html(" " + mouse_deadzone);
+        lastFocusedSlider = mouseDeadzoneSlider;
+        lastFocusedKnob = null;
+    });
+
     new DraggablePanel(mousePanel);
 }
 
-// ========== SLIDERS NOISE ==========
 function createNoisePanel() {
     let noisePanel = createDiv();
     noisePanel.addClass('panel panel-noise');
     
     let scaleLabel, speedLabel, intensityLabel;
-
-    // Bouton toggle animation
-    let toggleBtn = createButton("Stop").parent(noisePanel);
+    let toggleBtn = createButton("stop").parent(noisePanel);
     toggleBtn.addClass('btn-toggle-noise');
     toggleBtn.mousePressed(() => {
         noise_active = !noise_active;
-         // + désactiver aussi la souris ? (conflit avec la convergence des flèches !)
         if (!noise_active) {
-            toggleBtn.html("Play");
+            toggleBtn.html("play");
             noise_scale=0
             noise_speed=0
             noise_intensity=0
@@ -293,7 +278,7 @@ function createNoisePanel() {
             mousePanel.style('background-color', '#d593ff');
             
         } else {
-            toggleBtn.html("Stop");
+            toggleBtn.html("stop");
             noise_scale=noiseScaleSlider.value();
             noise_speed=noiseSpeedSlider.value();
             noise_intensity=noiseIntensitySlider.value();
@@ -303,7 +288,7 @@ function createNoisePanel() {
     });
 
     noiseScaleSlider = createSlider(0.0001, 0.01, noise_scale, 0.0001).parent(noisePanel);
-    createDiv("noise scale").parent(noisePanel);
+    createDiv("taille du bruit").parent(noisePanel);
     scaleLabel = createSpan(" " + noise_scale.toFixed(4)).parent(noisePanel);
     scaleLabel.addClass('slider-label');
     noiseScaleSlider.input(() => {
@@ -314,7 +299,7 @@ function createNoisePanel() {
     });
 
     noiseSpeedSlider = createSlider(0.001, 0.02, noise_speed, 0.001).parent(noisePanel);
-    createDiv("noise speed").parent(noisePanel);
+    createDiv("vitesse du bruit").parent(noisePanel);
     speedLabel = createSpan(" " + noise_speed.toFixed(3)).parent(noisePanel);
     speedLabel.addClass('slider-label');
     noiseSpeedSlider.input(() => {
@@ -325,7 +310,7 @@ function createNoisePanel() {
     });
 
     noiseIntensitySlider = createSlider(0, 7200, noise_intensity, 10).parent(noisePanel);
-    createDiv("noise intensity").parent(noisePanel);
+    createDiv("puissance du bruit").parent(noisePanel);
     intensityLabel = createSpan(" " + noise_intensity).parent(noisePanel);
     intensityLabel.addClass('slider-label');
     noiseIntensitySlider.input(() => {
@@ -335,13 +320,9 @@ function createNoisePanel() {
         lastFocusedKnob = null;
     });
 
-    // Rendre le panneau draggable
     new DraggablePanel(noisePanel);
 }
 
-
-
-// ========== BOUTONS EXPORT ==========
 function createExportButtons(parent) {
     let btns = createDiv().parent(parent);
     btns.addClass('export-buttons');
@@ -360,27 +341,7 @@ function createExportButtons(parent) {
         console.log("Export PNG demandé");
     });
 
-    // Bouton enregistrement séquence PNG
-    let videoBtn = createButton("● REC").parent(btns);
-    videoBtn.addClass('btn-export btn-video');
-    videoBtn.mousePressed(() => {
-        console.log("Bouton REC cliqué, isRecording:", isRecording, "isRecordingSVG:", isRecordingSVG);
-        
-        if (!isRecording && !isRecordingSVG) {
-            console.log("Démarrage enregistrement séquence PNG");
-            startRecording();
-            videoBtn.html("■ STOP");
-            videoBtn.style('background-color', '#ff0000');
-        } else if (isRecording) {
-            console.log("Arrêt enregistrement séquence PNG");
-            stopRecording();
-            videoBtn.html("● REC");
-            videoBtn.style('background-color', '#333');
-        }
-    });
-
-    // Nouveau bouton pour SVG animé
-    let svgAnimBtn = createButton("● SVG").parent(btns);
+    let svgAnimBtn = createButton("● svg").parent(btns);
     svgAnimBtn.addClass('btn-export btn-svg-anim');
     svgAnimBtn.mousePressed(() => {
         console.log("Bouton SVG cliqué, isRecordingSVG:", isRecordingSVG, "isRecording:", isRecording);
@@ -388,34 +349,46 @@ function createExportButtons(parent) {
         if (!isRecordingSVG && !isRecording) {
             console.log("Démarrage enregistrement SVG");
             startSVGRecording();
-            svgAnimBtn.html("■ STOP");
+            svgAnimBtn.html("■ stop");
             svgAnimBtn.style('background-color', '#ff0000');
         } else if (isRecordingSVG) {
             console.log("Arrêt enregistrement SVG");
             stopSVGRecording();
-            svgAnimBtn.html("● SVG");
+            svgAnimBtn.html("● svg");
             svgAnimBtn.style('background-color', '#333');
         }
     });
 
-    // Gestionnaires clavier pour les exports
-    document.addEventListener('keydown', (e) => {
-        // Ignorer si on tape dans un input
-        if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+    let videoBtn = createButton("● ffmpeg").parent(btns);
+    videoBtn.addClass('btn-export btn-video');
+    videoBtn.mousePressed(() => {
+        console.log("Bouton REC cliqué, isRecording:", isRecording, "isRecordingSVG:", isRecordingSVG);
         
-        // I : export SVG statique
+        if (!isRecording && !isRecordingSVG) {
+            console.log("Démarrage enregistrement séquence PNG");
+            startRecording();
+            videoBtn.html("■ stop");
+            videoBtn.style('background-color', '#ff0000');
+        } else if (isRecording) {
+            console.log("Arrêt enregistrement séquence PNG");
+            stopRecording();
+            videoBtn.html("● ffmpeg");
+            videoBtn.style('background-color', '#333');
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
         if (e.key === 'i' || e.key === 'I') {
             export_mode_SVG = true;
             console.log("Export SVG statique demandé (touche I)");
         }
         
-        // O : export PNG
         if (e.key === 'o' || e.key === 'O') {
             export_mode_PNG = true;
             console.log("Export PNG demandé (touche O)");
         }
         
-        // K : toggle enregistrement SVG animé
         if (e.key === 'k' || e.key === 'K') {
             if (!isRecordingSVG && !isRecording) {
                 console.log("Démarrage enregistrement SVG (touche K)");
@@ -430,7 +403,6 @@ stopSVGRecording();
             }
         }
         
-        // L : toggle enregistrement séquence PNG
         if (e.key === 'l' || e.key === 'L') {
             if (!isRecording && !isRecordingSVG) {
                 console.log("Démarrage enregistrement séquence PNG (touche L)");
@@ -447,7 +419,6 @@ stopSVGRecording();
     });
 }
 
-// ========== PANNEAU DE KNOBS ==========
 function createKnobsPanel() {
     knobsPanel = createDiv();
     knobsPanel.addClass('panel panel-knobs');
@@ -474,6 +445,5 @@ function createKnobsPanel() {
     knobBL.setAngle(angleBL);
     knobBR.setAngle(angleBR);
 
-    // Rendre le panneau draggable (avec layout grid)
     new DraggablePanel(knobsPanel, "ANGLE CONTROLS", true);
 }

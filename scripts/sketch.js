@@ -1,57 +1,47 @@
-// ========== VARIABLES D'IMAGE ==========
 let defaultImagePath = 'montagne.jpg';
 let img;
 let imgLoaded = false;
 let inputFileName = "montagne";
-
-// ========== PARAMÈTRES DE RENDU ==========
 let padding = 40;
-
-// noise
 let noise_scale = 0.001;
 let noise_speed = 0.005;
 let noise_intensity = 3600;
-let noise_active = true; // Animation activée par défaut
-let noise_z_frozen = 0; // Position figée du noise quand on pause
-
-// mouse
+let noise_active = true;
+let noise_z_frozen = 0;
 let mouse_active = true;
-let mouse_influence_radius = 200; // Rayon d'influence de la souris en pixels
-
-// corner angles (contrôlés par les knobs dans l'interface)
+let mouse_influence_radius = 200;
+let mouse_deadzone = 0; 
 let angleTL = 0;
 let angleTR = 90;
 let angleBL = 0;
 let angleBR = 90;
-
-// stroke default
 let strokeWDefault = 1;
 
-// ========== EXPORT FLAGS ==========
 let export_mode_SVG = false;
 let export_mode_PNG = false;
 
-// ========== ENREGISTREMENT SÉQUENCE PNG ==========
 let isRecording = false;
 let recordedFrames = [];
 let recordingStartFrame = 0;
-let targetFPS = 30; // FPS pour l'export
-let exportWidth = 1920; // Largeur Full HD pour l'export
+let targetFPS = 30;
+let exportWidth = 1920;
 
-// ========== ENREGISTREMENT SVG ANIMÉ ==========
 let isRecordingSVG = false;
 let svgFramesData = [];
 let svgRecordingStartFrame = 0;
 let arrowsRegistry = new Map();
 
-// ========== RÉFÉRENCES UI (définies dans interface.js) ==========
 let cellSizeSlider, sizeFactorSlider, contrastSlider, strokeSlider;
 let noiseScaleSlider, noiseSpeedSlider, noiseIntensitySlider;
 let fileInput;
 let lastFocusedSlider = null;
 let lastFocusedKnob = null;
 
-// ========== PRELOAD ==========
+let canvasZoom = 1.0;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 3.0;
+const ZOOM_SPEED = 0.1;
+
 function preload() {
     if (defaultImagePath) {
         try {
@@ -62,9 +52,7 @@ function preload() {
     }
 }
 
-// ========== SETUP ==========
 function setup() {
-    // Créer le canvas
     if (imgLoaded) {
         createCanvas(img.width + padding * 2, img.height + padding * 2);
     } else {
@@ -73,15 +61,11 @@ function setup() {
         text("Import img", 20, 40);
     }
 
-    // Initialiser l'interface (définie dans interface.js)
     createUI();
+    initCanvasZoom();
 
-    // Ajouter la gestion des touches fléchées
     document.addEventListener('keydown', (e) => {
-        // Ignorer si on tape dans un input text
-        if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
-        
-        // Contrôle des sliders avec les flèches
+        if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;        
         if (lastFocusedSlider) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -102,7 +86,6 @@ function setup() {
             }
         }
         
-        // Contrôle des knobs avec les flèches
         if (lastFocusedKnob) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -117,25 +100,21 @@ function setup() {
     });
 }
 
-// ========== DRAW (LOGIQUE DE RENDU) ==========
 function draw() {
     if (!imgLoaded) return;
 
-    // Initialiser la frame pour l'enregistrement SVG
     if (isRecordingSVG) {
         captureFrameSVGData();
     }
 
-    // Calcul du noise avec vitesse fixe (seulement si activé)
     let noise_z;
     if (noise_active) {
         noise_z = frameCount * noise_speed;
-        noise_z_frozen = noise_z; // Sauvegarder la position actuelle
+        noise_z_frozen = noise_z; 
     } else {
-        noise_z = noise_z_frozen; // Utiliser la position figée
+        noise_z = noise_z_frozen; 
     }
 
-    // Variation souris (seulement si la souris est sur le canvas ET l'animation est désactivée)
     let variation_souris = 0;
     let mouseInfluence = false;
     if (!noise_active && mouse_active && mouseX >= padding && mouseX <= width - padding && 
@@ -146,7 +125,6 @@ function draw() {
     background(255);
     img.loadPixels();
 
-    // Récupérer les valeurs des sliders
     let cellSize = cellSizeSlider.value();
     let sizeFactor = sizeFactorSlider.value();
     let contrastFactor = contrastSlider.value();
@@ -167,65 +145,67 @@ function draw() {
         svg += `<g stroke="black" stroke-width="${strokeW}" stroke-linecap="round" fill="none">\n`;
     }
 
-    // Boucle de rendu des flèches
     for (let y = 0; y < img.height; y += cellSize) {
         let ty = y / cellSize / rows;
 
         for (let x = 0; x < img.width; x += cellSize) {
             let tx = x / cellSize / cols;
 
-            // Interpolation bilinéaire de l'angle
             let angleTop = lerp(angleTL, angleTR, tx);
             let angleBottom = lerp(angleBL, angleBR, tx);
             let angle = lerp(angleTop, angleBottom, ty);
 
-            // Calcul de la luminosité
             let couleur = img.get(x, y);
             let bright = (0.2126 * red(couleur) + 0.7152 * green(couleur) + 0.0722 * blue(couleur)) / 255;
             let mapped = pow(map(bright, 0, 1, 1, 0), contrastFactor);
             let size = mapped * cellSize * sizeFactor;
             if (size < 0.5) continue;
 
-            // Variation de bruit
             let variation = noise(x * noise_scale, y * noise_scale, noise_z) * noise_intensity;
-
-            // Calculer l'angle vers la souris si elle est active
             let finalAngle = angle + variation;
+            let skipArrow = false;
+            
             if (mouseInfluence) {
-                // Position de la flèche dans le canvas
                 let arrowX = x + cellSize * 0.5 + padding;
-                let arrowY = y + cellSize * 0.5 + padding;
-                
-                // Calculer la distance entre la flèche et la souris
+                let arrowY = y + cellSize * 0.5 + padding;                
                 let dx = mouseX - arrowX;
                 let dy = mouseY - arrowY;
                 let distance = sqrt(dx * dx + dy * dy);
+                let deadzoneRadius = mouse_deadzone * cellSize;
                 
-                // Si la flèche est dans le rayon d'influence
-                if (distance < mouse_influence_radius) {
-                    // Calculer l'angle vers la souris
-                    let angleToMouse = atan2(dy, dx) * 180 / PI;
+                if (distance < deadzoneRadius) {
+                    skipArrow = true;
+                }
+                else if (distance < mouse_influence_radius) {
+                    let angleToMouseRad = atan2(dy, dx);
                     
-                    // Créer une transition nette avec des cercles concentriques
-                    // Diviser le rayon en zones : zone centrale (100% effet) + zone de transition
-                    let coreRadius = mouse_influence_radius * 0.1; // 30% du rayon = zone centrale
+                    let coreRadius = mouse_influence_radius * 0.1;
                     
                     if (distance < coreRadius) {
-                        // Dans le cercle central : 100% vers la souris
-                        finalAngle = angleToMouse;
+                        finalAngle = degrees(angleToMouseRad);
                     } else {
-                        // Dans la zone de transition : interpolation basée sur la distance du cercle central
                         let transitionDistance = distance - coreRadius;
                         let transitionZone = mouse_influence_radius - coreRadius;
                         let influence = 1 - (transitionDistance / transitionZone);
+                        let angleToMouse = degrees(angleToMouseRad);                        
+                        let baseAngle = angle + variation;
                         
-                        // Interpolation linéaire entre l'angle de base et l'angle vers la souris
-                        finalAngle = lerp(angle + variation, angleToMouse, influence);
+                        while (baseAngle > 180) baseAngle -= 360;
+                        while (baseAngle < -180) baseAngle += 360;
+                        while (angleToMouse > 180) angleToMouse -= 360;
+                        while (angleToMouse < -180) angleToMouse += 360;
+                        
+                        let angleDiff = angleToMouse - baseAngle;
+                        while (angleDiff > 180) angleDiff -= 360;
+                        while (angleDiff < -180) angleDiff += 360;
+                        
+                        finalAngle = baseAngle + angleDiff * influence;
                     }
                 }
             }
 
-            // Rendu de la flèche
+            if (skipArrow) continue;
+
             push();
             translate(x + cellSize * 0.5 + padding, y + cellSize * 0.5 + padding);
             rotate(radians(finalAngle));
@@ -234,7 +214,15 @@ function draw() {
             line(size / 2, 0, size / 4, size / 4);
             pop();
 
-            // Enregistrer les données de la flèche pour le SVG animé
+            // DEBUG
+            // if (mouseInfluence && distance < mouse_influence_radius) {
+            //     stroke(255, 0, 0, 50);
+            //     strokeWeight(1);
+            //     line(x + cellSize * 0.5 + padding, y + cellSize * 0.5 + padding, mouseX, mouseY);
+            //     stroke(0);
+            //     strokeWeight(strokeW);
+            // }
+
             if (isRecordingSVG) {
                 recordArrowData({
                     x: x + cellSize * 0.5,
@@ -257,7 +245,6 @@ function draw() {
         }
     }
 
-    // Finalisation export SVG
     if (export_mode_SVG) {
         svg += `</g>\n</svg>`;
         let blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
@@ -270,57 +257,66 @@ function draw() {
         export_mode_SVG = false;
     }
 
-    // Export PNG
     if (export_mode_PNG) {
         save(inputFileName + ".png");
         export_mode_PNG = false;
     }
 
-    // Capturer les frames pour l'enregistrement MP4
     if (isRecording) {
         captureFrameForMP4();
     }
+
+    if (mouseInfluence && !isRecording) {
+        push();
+        noFill();
+        stroke(255, 0, 0, 150);
+        strokeWeight(2);
+        circle(mouseX, mouseY, mouse_influence_radius * 2);
+        
+        stroke(0, 255, 0, 150);
+        if (mouse_deadzone > 0) {
+            let deadzoneRadius = mouse_deadzone * cellSizeSlider.value();
+            circle(mouseX, mouseY, deadzoneRadius * 2);
+        }
+        
+        fill(255, 0, 0);
+        noStroke();
+        circle(mouseX, mouseY, 10);
+        pop();
+    }
 }
 
-// ========== FONCTIONS D'ENREGISTREMENT SÉQUENCE PNG ==========
 function startRecording() {
     recordedFrames = [];
     recordingStartFrame = frameCount;
     isRecording = true;
-    frameRate(targetFPS); // Fixer le framerate à 30 FPS
-    console.log('Enregistrement de séquence PNG démarré à 30 FPS');
+    frameRate(targetFPS);
+    console.log('enregistrement de la séquence .png (ffmpeg) démarré');
 }
 
 function captureFrameForMP4() {
-    // Capturer chaque frame (on est déjà à 30 FPS)
     let mainCanvas = document.querySelector('canvas');
     
-    // Calculer les dimensions d'export avec ratio préservé
     const canvasWidth = img.width + padding * 2;
     const canvasHeight = img.height + padding * 2;
     const aspectRatio = canvasHeight / canvasWidth;
     const exportHeight = Math.round(exportWidth * aspectRatio);
     
-    // Créer un canvas temporaire aux bonnes dimensions
     let tempCanvas = document.createElement('canvas');
     tempCanvas.width = exportWidth;
     tempCanvas.height = exportHeight;
     let tempCtx = tempCanvas.getContext('2d');
     
-    // ACTIVER L'INTERPOLATION DE HAUTE QUALITÉ
     tempCtx.imageSmoothingEnabled = true;
-    tempCtx.imageSmoothingQuality = 'high'; // 'low', 'medium', ou 'high'
+    tempCtx.imageSmoothingQuality = 'high'; 
     
-    // Dessiner le canvas principal redimensionné avec haute qualité
     tempCtx.drawImage(mainCanvas, 0, 0, exportWidth, exportHeight);
     
-    // Stocker l'image PNG avec qualité maximale
     recordedFrames.push(tempCanvas.toDataURL('image/png'));
     
-    // Afficher la progression dans la console
     const frameNumber = recordedFrames.length;
     if (frameNumber % 30 === 0) {
-        console.log(`Frame ${frameNumber} capturée (${(frameNumber / 30).toFixed(1)}s)`);
+        console.log(`frame ${frameNumber} enregistrée (${(frameNumber / 30).toFixed(1)}s)`);
     }
 }
 
@@ -328,54 +324,45 @@ function stopRecording() {
     if (!isRecording) return;
     
     isRecording = false;
-    frameRate(60); // Restaurer le framerate normal
-    console.log(`Enregistrement terminé : ${recordedFrames.length} frames capturées`);
+    frameRate(60);
+    console.log(`enregistrement terminé : ${recordedFrames.length} frames capturées`);
     
-    // Créer et télécharger le ZIP
     createZipAndDownload();
 }
 
 async function createZipAndDownload() {
     if (recordedFrames.length === 0) {
-        console.error("Aucune frame à exporter");
+        console.error("aucune frame à exporter");
         return;
     }
     
-    // Calculer les dimensions pour l'affichage
     const canvasWidth = img.width + padding * 2;
     const canvasHeight = img.height + padding * 2;
     const aspectRatio = canvasHeight / canvasWidth;
     const exportHeight = Math.round(exportWidth * aspectRatio);
     
-    console.log(`🎬 Création du ZIP : ${recordedFrames.length} images ${exportWidth}x${exportHeight}px à 30 FPS`);
-    console.log(`⏱️  Durée de la vidéo : ${(recordedFrames.length / 30).toFixed(2)} secondes`);
+    console.log(`création du dossier : ${recordedFrames.length} images ${exportWidth}x${exportHeight}px à 30 FPS`);
+    console.log(`durée de la vidéo : ${(recordedFrames.length / 30).toFixed(2)} secondes`);
     
-    // Créer un nouveau ZIP
     const zip = new JSZip();
     const folderName = `${inputFileName}_sequence`;
     
-    console.log('📦 Ajout des frames au ZIP...');
+    console.log('ajout des frames au dossier...');
     
-    // Ajouter toutes les frames au ZIP
     for (let i = 0; i < recordedFrames.length; i++) {
         const frameNumber = String(i + 1).padStart(5, '0');
         const filename = `${inputFileName}_frame_${frameNumber}.png`;
-        
-        // Convertir le data URL en blob
         const base64Data = recordedFrames[i].split(',')[1];
         
-        // Ajouter l'image au ZIP
         zip.file(filename, base64Data, {base64: true});
         
-        // Afficher la progression tous les 10%
         const progress = ((i + 1) / recordedFrames.length * 100);
         if (progress % 10 < (100 / recordedFrames.length) || i === recordedFrames.length - 1) {
-            console.log(`  📥 ${progress.toFixed(0)}% - ${i + 1}/${recordedFrames.length} frames ajoutées`);
+            console.log(`${progress.toFixed(0)}% - ${i + 1}/${recordedFrames.length} frames ajoutées`);
         }
     }
     
-    // Créer un fichier texte avec les informations
-    const infoText = `Séquence PNG - ${inputFileName}
+    const infoText = `Séquence .png (ffmpeg) - ${inputFileName}
 ———
 Nombre de frames : ${recordedFrames.length}
 Framerate : 30 FPS
@@ -398,26 +385,23 @@ Importer dans After Effects :
 1. Fichier > Importer > Fichier
 2. Sélectionner ${inputFileName}_frame_00001.png
 3. Cocher "Sequence PNG"
-4. Cliquer sur Import
+4. Cliquer sur Importer
 `;
     
     zip.file('_README.txt', infoText);
     
-    console.log('📦 Création du fichier ZIP...');
+    console.log('création du dossier...');
     
-    // Générer le ZIP SANS compression (STORE = juste empaqueter, très rapide)
     const zipBlob = await zip.generateAsync({
         type: 'blob',
-        compression: 'STORE'  // Pas de compression, juste empaquetage = ultra rapide
+        compression: 'STORE'
     }, function updateCallback(metadata) {
-        // Afficher la progression
         const percent = metadata.percent.toFixed(0);
         if (percent % 5 === 0 || percent === '100') {
             console.log(`  📦 ${percent}%`);
         }
     });
     
-    // Télécharger le ZIP
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
@@ -426,14 +410,12 @@ Importer dans After Effects :
     URL.revokeObjectURL(url);
     
     const sizeMB = (zipBlob.size / 1024 / 1024).toFixed(2);
-    console.log(`✅ ZIP téléchargé : ${folderName}.zip (${sizeMB} MB)`);
-    console.log(`✅ ${recordedFrames.length} frames exportées avec succès !`);
+    console.log(`dossier téléchargé : ${folderName}.zip (${sizeMB} MB)`);
+    console.log(`${recordedFrames.length} frames exportées !`);
     
-    // Nettoyer
     recordedFrames = [];
 }
 
-// ========== FONCTIONS D'ENREGISTREMENT SVG ANIMÉ ==========
 
 function startSVGRecording() {
     isRecordingSVG = true;
@@ -459,17 +441,15 @@ function captureFrameSVGData() {
     const frameIndex = frameCount - svgRecordingStartFrame;
     const frameData = {
         frameIndex: frameIndex,
-        timestamp: frameIndex / 60, // 60 FPS
+        timestamp: frameIndex / 30,
         arrows: []
     };
     
-    // Cette fonction sera appelée depuis draw() avec les données de chaque flèche
     svgFramesData.push(frameData);
 }
 
 function recordArrowData(arrowData) {
-    if (!isRecordingSVG || svgFramesData.length === 0) return;
-    
+    if (!isRecordingSVG || svgFramesData.length === 0) return;   
     const currentFrame = svgFramesData[svgFramesData.length - 1];
     currentFrame.arrows.push(arrowData);
 }
@@ -481,12 +461,9 @@ function generateAnimatedSVG() {
     }
     
     const fps = 60;
-    const duration = svgFramesData.length / fps;
-    
-    // Organiser les données par flèche (grouper toutes les frames d'une même flèche)
+    const duration = svgFramesData.length / fps;    
     const arrowTimelines = buildArrowTimelines();
     
-    // Générer le SVG
     let svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" 
      width="${img.width}" 
@@ -500,7 +477,6 @@ function generateAnimatedSVG() {
   <g id="animation-group">
 `;
 
-    // Générer chaque flèche avec son animation
     for (const [arrowId, timeline] of arrowTimelines.entries()) {
         svg += generateArrowWithAnimation(arrowId, timeline, duration, fps);
     }
@@ -508,7 +484,6 @@ function generateAnimatedSVG() {
     svg += `  </g>
 </svg>`;
     
-    // Télécharger le fichier
     downloadSVG(svg);
 }
 
@@ -517,7 +492,6 @@ function buildArrowTimelines() {
     
     svgFramesData.forEach((frameData, frameIndex) => {
         frameData.arrows.forEach((arrow, arrowIndex) => {
-            // ID unique par flèche (basé sur sa position dans la grille)
             const arrowId = `arrow_${arrow.gridX}_${arrow.gridY}`;
             
             if (!timelines.has(arrowId)) {
@@ -536,11 +510,7 @@ function buildArrowTimelines() {
 
 function generateArrowWithAnimation(arrowId, timeline, duration, fps) {
     if (timeline.length === 0) return '';
-    
-    // Prendre la première frame comme référence
-    const firstFrame = timeline[0];
-    
-    // Détecter si la flèche est statique (même angle sur toutes les frames)
+    const firstFrame = timeline[0];    
     const isStatic = timeline.every(frame => 
         Math.abs(frame.angle - firstFrame.angle) < 0.1 &&
         Math.abs(frame.size - firstFrame.size) < 0.1
@@ -549,10 +519,8 @@ function generateArrowWithAnimation(arrowId, timeline, duration, fps) {
     let arrowSVG = `    <g id="${arrowId}">\n`;
     
     if (isStatic) {
-        // Flèche statique : pas d'animation
         arrowSVG += generateStaticArrow(firstFrame);
     } else {
-        // Flèche animée : utiliser SMIL
         arrowSVG += generateAnimatedArrow(timeline, duration, fps);
     }
     
@@ -577,12 +545,8 @@ function generateStaticArrow(frame) {
 function generateAnimatedArrow(timeline, duration, fps) {
     const firstFrame = timeline[0];
     const { x, y } = firstFrame;
-    
-    // Construire les keyframes pour l'animation de rotation
     const rotationKeyTimes = timeline.map((frame, i) => (i / (timeline.length - 1)).toFixed(3)).join(';');
-    const rotationValues = timeline.map(frame => frame.angle.toFixed(2)).join(';');
-    
-    // Construire les keyframes pour l'animation de taille
+    const rotationValues = timeline.map(frame => frame.angle.toFixed(2)).join(';');    
     const sizeValues = timeline.map(frame => frame.size.toFixed(2)).join(';');
     
     let arrowSVG = `      <g transform="translate(${x},${y})">
@@ -653,7 +617,6 @@ function downloadSVG(svgContent) {
     console.log("svg animé téléchargé");
 }
 
-// ========== GESTION DES FICHIERS ==========
 function handleFile(file) {
     if (file.type === 'image') {
         let name = file.name;
@@ -664,5 +627,44 @@ function handleFile(file) {
             imgLoaded = true;
             resizeCanvas(img.width + padding * 2, img.height + padding * 2);
         });
+    }
+}
+function initCanvasZoom() {
+    let canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        
+        const delta = e.deltaY > 0 ? -ZOOM_SPEED : ZOOM_SPEED;
+        const newZoom = constrain(canvasZoom + delta, MIN_ZOOM, MAX_ZOOM);
+        
+        setCanvasZoom(newZoom);
+    }, { passive: false });
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        
+        if (e.key === '+' || e.key === '=' && !e.shiftKey) {
+            e.preventDefault();
+            const newZoom = constrain(canvasZoom + ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM);
+            setCanvasZoom(newZoom);
+        }
+        
+        if (e.key === '-' && !e.shiftKey) {
+            e.preventDefault();
+            const newZoom = constrain(canvasZoom - ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM);
+            setCanvasZoom(newZoom);
+        }
+    });
+}
+
+function setCanvasZoom(zoom) {
+    canvasZoom = zoom;
+    let canvas = document.querySelector('canvas');
+    if (canvas) {
+        canvas.style.transform = `scale(${canvasZoom})`;
+        canvas.style.transformOrigin = 'top left';
+        console.log(`zoom: ${Math.round(canvasZoom * 100)}%`);
     }
 }
