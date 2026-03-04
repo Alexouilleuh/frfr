@@ -4,20 +4,19 @@
 
 body {
     background-color: rgb(225, 225, 225);
-    margin: 20px; /* Espacement uniforme de 20px pour canvas, texte, etc. */
-    overflow: hidden; /* Empêcher le scroll global */
+    margin: 20px;
+    overflow: hidden;
 }
 
-/* ========== CONTENEUR CANVAS ZOOMABLE ========== */
 #canvas-container {
     position: fixed;
     top: 20px;
     left: 20px;
     right: 0;
     bottom: 0;
-    overflow: auto; /* Permettre le scroll si le canvas dépasse */
+    overflow: auto;
     transform-origin: top left;
-    /* Le zoom sera appliqué via JavaScript */
+
 }
 
 #canvas-container canvas {
@@ -39,7 +38,6 @@ body {
     margin-left: 2.5em; 
 }
 
-/* ========== PANNEAUX PRINCIPAUX ========== */
 .panel {
     position: fixed;
     padding: 0.75em;
@@ -93,7 +91,6 @@ body {
     gap: 8px;
 }
 
-/* ========== KNOBS ========== */
 .knob-cell {
     display: flex;
     align-items: center;
@@ -124,17 +121,14 @@ body {
     color: #ffffff;
 }
 
-/* ========== SLIDERS ========== */
 .slider-label {
     font-size: 1em;
 }
 
-/* ========== BOUTONS ========== */
 .export-buttons {
     display: grid;
     gap: 10px;
     grid-template-columns: 1fr 1fr;
-    /* margin-top supprimé pour égaliser les marges internes du panneau */
 }
 
 .btn-export {
@@ -167,9 +161,6 @@ body {
     background-color: #444;
 }
 
-
-
-/* ========== FILE INPUT ========== */
 
 #file-input-container {
     position: fixed;

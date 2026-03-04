@@ -271,17 +271,17 @@ function draw() {
         noFill();
         stroke(255, 0, 0, 150);
         strokeWeight(2);
-        circle(mouseX, mouseY, mouse_influence_radius * 2);
+        // circle(mouseX, mouseY, mouse_influence_radius * 2);
         
         stroke(0, 255, 0, 150);
         if (mouse_deadzone > 0) {
             let deadzoneRadius = mouse_deadzone * cellSizeSlider.value();
-            circle(mouseX, mouseY, deadzoneRadius * 2);
+            // circle(mouseX, mouseY, deadzoneRadius * 2);
         }
         
         fill(255, 0, 0);
         noStroke();
-        circle(mouseX, mouseY, 10);
+        // circle(mouseX, mouseY, 10);
         pop();
     }
 }
