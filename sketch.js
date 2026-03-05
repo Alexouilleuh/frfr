@@ -305,7 +305,12 @@ function captureFrameForMP4() {
     const canvasWidth = img.width + padding * 2;
     const canvasHeight = img.height + padding * 2;
     const aspectRatio = canvasHeight / canvasWidth;
-    const exportHeight = Math.round(exportWidth * aspectRatio);
+    
+    // Calculer la hauteur et l'arrondir à un nombre PAIR pour FFmpeg (yuv420p exige des dimensions paires)
+    let exportHeight = Math.round(exportWidth * aspectRatio);
+    if (exportHeight % 2 !== 0) {
+        exportHeight += 1; // Si impair, ajouter 1 pour le rendre pair
+    }
     
     let tempCanvas = document.createElement('canvas');
     tempCanvas.width = exportWidth;
@@ -344,7 +349,12 @@ async function createZipAndDownload() {
     const canvasWidth = img.width + padding * 2;
     const canvasHeight = img.height + padding * 2;
     const aspectRatio = canvasHeight / canvasWidth;
-    const exportHeight = Math.round(exportWidth * aspectRatio);
+    
+    // Arrondir à un nombre pair pour la compatibilité FFmpeg
+    let exportHeight = Math.round(exportWidth * aspectRatio);
+    if (exportHeight % 2 !== 0) {
+        exportHeight += 1;
+    }
     
     console.log(`création du dossier : ${recordedFrames.length} images ${exportWidth}x${exportHeight}px à 30 FPS`);
     console.log(`durée de la vidéo : ${(recordedFrames.length / 30).toFixed(2)} secondes`);
