@@ -103,10 +103,15 @@ function setup() {
 function draw() {
     if (!imgLoaded) return;
 
-    // Ajuster les coordonnées de la souris en fonction du zoom
-    // Quand le canvas est zoomé avec scale(), mouseX/mouseY ne sont pas ajustés automatiquement
-    let adjustedMouseX = mouseX / canvasZoom;
-    let adjustedMouseY = mouseY / canvasZoom;
+    // Obtenir la position réelle de la souris par rapport au canvas
+    // p5.js fournit winMouseX et winMouseY (coordonnées fenêtre)
+    // Il faut les convertir en coordonnées canvas en tenant compte du zoom
+    let canvas = document.querySelector('canvas');
+    let rect = canvas.getBoundingClientRect();
+    
+    // Coordonnées de la souris par rapport au canvas (sans zoom)
+    let adjustedMouseX = (winMouseX - rect.left) / canvasZoom;
+    let adjustedMouseY = (winMouseY - rect.top) / canvasZoom;
 
     if (isRecordingSVG) {
         captureFrameSVGData();
